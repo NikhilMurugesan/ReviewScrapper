@@ -43,21 +43,30 @@ def run_scraper(excel_file, batch_size, num_processes, headless=True, retries=2)
 
     # Combine individual CSVs
     combined = pd.DataFrame()
-    for pincode in pin_list:
-        file_path = f"courier_reviews_full_{pincode}.csv"
-        if os.path.exists(file_path):
-            if file_path.endswith(".csv"):
-                df_pin = pd.read_csv(file_path)
-            elif file_path.endswith(".xlsx"):
-                df_pin = pd.read_excel(file_path)
-            else:
-                raise ValueError("Unsupported file format. Use .csv or .xlsx")
-            combined = pd.concat([combined, df_pin], ignore_index=True)
-    combined.to_csv("courier_reviews_combined.csv", index=False)
-    logging.info("✅ Combined CSV saved as courier_reviews_combined.csv")
+    dfs = []
+    csv_directory = 'outputs'
+    for filename in os.listdir(csv_directory):
+        if filename.endswith('.csv'):
+            filepath = os.path.join(csv_directory, filename)
+            try:
+                df = pd.read_csv(filepath)
+                dfs.append(df)
+            except Exception as e:
+                print(f"Error reading {filename}: {e}")
+    if dfs:
+        combined_df = pd.concat(dfs, ignore_index=True)
+
+        # Save the combined DataFrame to a new CSV file
+        output_filename = 'combined_data.csv'
+        output_filepath = os.path.join(csv_directory, output_filename)
+        combined_df.to_csv(output_filepath, index=False)
+        print(f"Successfully combined CSV files into {output_filepath}")
+    else:
+        print("No CSV files found to combine.")
+    logging.info("✅ Combined CSV saved as combined_data.csv")
 
 if __name__ == "__main__":
     log_file = setup_logger()
     logging.info("🚀 Starting scraper")
-    run_scraper("sample_pincode_list.xlsx", batch_size=10, num_processes=4, headless=True, retries=3)
+    run_scraper("sample_pincode_list.xlsx", batch_size=20, num_processes=20, headless=True, retries=1)
     logging.info("🏁 Scraper finished")

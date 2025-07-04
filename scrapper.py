@@ -12,7 +12,6 @@ from selenium.webdriver.chrome.service import Service
 from deep_translator import GoogleTranslator
 import time
 import re
-import os
 
 
 def translate_if_needed(text):
@@ -28,9 +27,11 @@ def translate_if_needed(text):
         return text
 
 
-def scrape_google_maps_reviews(pincode, proxy=None):
+def scrape_google_maps_reviews(pincode, proxy=None, headless=True):
     print(f"🚀 Starting scraping for PINCODE: {pincode}")
     options = Options()
+    if False:
+        options.add_argument("--headless")
     options.add_argument("--start-maximized")
     if proxy:
         options.add_argument(f'--proxy-server={proxy}')
@@ -52,9 +53,11 @@ def scrape_google_maps_reviews(pincode, proxy=None):
     print("🔃 Scrolling to load all listings...")
     while True:
         actions.move_to_element(scrollable_div).click().send_keys(Keys.END).perform()
-        time.sleep(1.5)
+        time.sleep(5)
         try:
+            time.sleep(1.5)
             driver.find_element(By.XPATH, '//span[contains(text(), "You\'ve reached the end of the list.")]')
+            time.sleep(1.5)
             print("✅ Reached end of listings.")
             break
         except NoSuchElementException:
@@ -195,8 +198,4 @@ def scrape_google_maps_reviews(pincode, proxy=None):
 
 
 # ✅ Start scraping
-output_dir = "outputs"
-os.makedirs(output_dir, exist_ok=True)
-df = pd.DataFrame(courier_data)
-df.to_csv(os.path.join(output_dir, f"courier_reviews_full_{pincode}.csv"), index=False)
-print(f"✅ {pincode}: Saved {len(df)} reviews.")
+scrape_google_maps_reviews("639117")
