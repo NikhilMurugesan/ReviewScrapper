@@ -8,32 +8,29 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException
 from selenium.webdriver.chrome.service import Service
 from deep_translator import GoogleTranslator
 import time
 import re
 import logging
 
-
 def translate_if_needed(text):
     try:
-
         cleaned = re.sub(r'[^A-Za-z]', '', text)
         if cleaned and all(char.isalpha() and char.isascii() for char in cleaned):
             return text
-        print(f"NEED Translation... {text} -----------------",GoogleTranslator(source='auto', target='en').translate(text))
+        print(f"NEED Translation... {text} -----------------", GoogleTranslator(source='auto', target='en').translate(text))
         return GoogleTranslator(source='auto', target='en').translate(text)
     except Exception as e:
         print(f"Translation error: {e}")
         return text
 
-
 def scrape_google_maps_reviews(pincode, proxy=None, headless=True):
     print(f"🚀 Starting scraping for PINCODE: {pincode}")
     options = Options()
     if False:
-        options.add_argument("--headless")
+        options.add_argument("--headless=new")
     options.add_argument("--start-maximized")
     if proxy:
         options.add_argument(f'--proxy-server={proxy}')
@@ -46,30 +43,11 @@ def scrape_google_maps_reviews(pincode, proxy=None, headless=True):
     time.sleep(5)
 
     courier_data = []
-    actions = ActionChains(driver)
-    attempts = 0
-    print("🔃 Scrolling to load all listings...")
-    while True:
-        print("1")
-        scrollable_div = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, 'div.Nv2PK'))
-        )
-        print("2")
-        actions.move_to_element(scrollable_div).click().send_keys(Keys.END).perform()
-        print("3")
-        time.sleep(5)
-        try:
-            time.sleep(10)
-            print("4")
-            driver.find_element(By.XPATH, '//span[contains(text(), "You\'ve reached the end of the list.")]')
-            time.sleep(10)
-            print("✅ Reached end of listings.")
-            break
-        except NoSuchElementException:
-            attempts += 1
-            if attempts > 30:
-                print("⚠️ Gave up after 30 scroll attempts.")
-                break
+    scroll_attempts = 0
+    max_scroll_attempts = 30
+
+
+
 
     listings = WebDriverWait(driver, 10).until(
         EC.presence_of_all_elements_located((By.CSS_SELECTOR, 'div.Nv2PK'))
@@ -84,9 +62,12 @@ def scrape_google_maps_reviews(pincode, proxy=None, headless=True):
             ActionChains(driver).move_to_element(listings[i]).click().perform()
             time.sleep(3)
 
-            name = translate_if_needed(WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CLASS_NAME, 'DUwDvf'))
-            ).text)
+            try:
+                name = translate_if_needed(WebDriverWait(driver, 5).until(
+                    EC.presence_of_element_located((By.CLASS_NAME, 'DUwDvf'))
+                ).text)
+            except:
+                name = "N/A"
             print(f"🏢 Courier: {name}")
 
             try:
@@ -119,9 +100,6 @@ def scrape_google_maps_reviews(pincode, proxy=None, headless=True):
 
             print("🔃 Scrolling reviews...")
             try:
-                scroll_container = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, 'div.m6QErb.DxyBCb.kA9KIf.dS8AEf.XiKgde'))
-                )
 
                 last_height = 0
                 for _ in range(100):
